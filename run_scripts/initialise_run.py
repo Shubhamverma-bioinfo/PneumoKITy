@@ -101,8 +101,8 @@ def parse_args(workflow_version):
                                   'one sample)'
                                   '[REQUIRED - OPTION 1]')
 
-    input_group.add_argument('--fastqs', '-f', nargs=2, help=' paths to fastq '
-                                                             'files: read1 read2 '
+    input_group.add_argument('--fastqs', '-f', nargs=1, help=' paths to fastq '
+                                                             'files: read1 '
                                                              '[REQUIRED - OPTION 2]')
 
     input_group.add_argument('--assembly', '-a',
@@ -128,7 +128,7 @@ def parse_args(workflow_version):
                                       '[REQUIRED - OPTION 1]')
 
     mix_input_group.add_argument('--fastqs', '-f', nargs=2, help=' paths to fastq '
-                                                                 'files: read1 read2 '
+                                                                 'files: read1 '
                                                                  '[REQUIRED - OPTION 2]')
 
     # auto default to 4 for mixed input
@@ -207,18 +207,9 @@ class Analysis:
                 sys.stderr.write(" ERROR: Check input directory path\n")
                 sys.exit(1)
 
-            # check for correct number of fastq
-            if len(self.fastq_files) != 2:
-                sys.stderr.write("Unexpected number (" +
-                                 str(len(self.fastq_files))
-                                 + ") of fastq files. Please use option -f to"
-                                   " specify the paths to the fastq files\n")
-                sys.exit(1)
-
         # option 2 input separate fastq paths -f option + existence check
         elif inputs.fastqs:
-            if os.path.isfile(inputs.fastqs[0]) and \
-                    os.path.isfile(inputs.fastqs[1]):
+            if os.path.isfile(inputs.fastqs[0]):
                 # set input dir to input dir of first fastq
                 self.input_dir = os.path.dirname(inputs.fastqs[0])
                 self.fastq_files = inputs.fastqs
@@ -328,8 +319,7 @@ class AnalysisPure(Analysis):
         if self.assembly:
             inputfiles = f"Assembly file:\t{self.assembly}"
         else:  # for fastq
-            inputfiles = f"Fastq1:\t{self.fastq_files[0]}\nFastq2:\t" \
-                         f"{self.fastq_files[1]}"
+            inputfiles = f"Fastq1:\t{self.fastq_files[0]}\nFastq2:\tNA"
 
         with open(os.path.join(self.output_dir,
                                f"{self.sampleid}_serotyping_results.txt"),
@@ -403,18 +393,10 @@ class AnalysisMixed(Analysis):
                 sys.stderr.write(" ERROR: Check input directory path\n")
                 sys.exit(1)
 
-            # check for correct number of fastq
-            if len(self.fastq_files) != 2:
-                sys.stderr.write("Unexpected number (" +
-                                 str(len(self.fastq_files))
-                                 + ") of fastq files. Please use option -f to"
-                                   " specify the paths to the fastq files\n")
-                sys.exit(1)
 
         # option 2 input separate fastq paths -f option + existence check
         elif inputs.fastqs:
-            if os.path.isfile(inputs.fastqs[0]) and \
-                    os.path.isfile(inputs.fastqs[1]):
+            if os.path.isfile(inputs.fastqs[0]):
                 # set input dir to input dir of first fastq
                 self.input_dir = os.path.dirname(inputs.fastqs[0])
                 self.fastq_files = inputs.fastqs
@@ -489,7 +471,8 @@ class AnalysisMixed(Analysis):
                 top_hit = (sero.serotype_hit, round(sero.percent_hit, 2), sero.mm)
                 add_on_dict["TopHit (Hit,percent,median_multiplicity)"] = top_hit
                 add_on_dict["RAG status"] = self.rag_status
-                mixed_output = mixed_output.append(add_on_dict, ignore_index=True, sort=False)
+                df_dictionary = pd.DataFrame([add_on_dict])
+                mixed_output = pd.concat([mixed_output, df_dictionary], ignore_index=True, sort=False)
 
         if not variants:
             mixed_output["Estimated % abundance in mix"] = mixed_output["Predicted phenotype"].map(self.mix_mm)
@@ -523,8 +506,7 @@ class AnalysisMixed(Analysis):
     def write_report(self, mixstring):
         # Class function to write report output from completed mixed object
 
-        inputfiles = f"Fastq1:\t{self.fastq_files[0]}\nFastq2:\t" \
-                     f"{self.fastq_files[1]}"
+        inputfiles = f"Fastq1:\t{self.fastq_files[0]}\nFastq2:\tNA"
 
         with open(os.path.join(self.output_dir,
                                f"{self.sampleid}_serotyping_results.txt"),
